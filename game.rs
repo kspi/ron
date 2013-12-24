@@ -25,12 +25,23 @@ impl Direction {
 
 type PlayerIndex = uint;
 
+pub trait PlayerBehaviour {
+    fn decide_direction(&self, &GameState) -> Direction;
+}
+
+pub struct GoNorth();
+impl PlayerBehaviour for GoNorth {
+    fn decide_direction(&self, _: &GameState) -> Direction {
+        North
+    }
+}
+
 pub struct Player {
     name: ~str,
     position: Vec,
     direction: Direction,
     is_alive: bool,
-    get_action: ~fn(&GameState) -> Direction
+    behaviour: ~PlayerBehaviour
 }
 
 pub enum Tile {
@@ -47,6 +58,7 @@ impl Tile {
     }
 }
 
+#[deriving(ToStr)]
 pub enum GameStatus {
     PlayerTurn(PlayerIndex),
     Won(PlayerIndex)
@@ -123,7 +135,7 @@ impl GameState {
 
     pub fn do_turn(&mut self) {
         let current = self.current_player();
-        let direction = (self.players[current].get_action)(self);
+        let direction = self.players[current].behaviour.decide_direction(self);
         self.players[current].direction = direction;
         let new_position = direction.apply_to(self.players[current].position);
 

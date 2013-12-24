@@ -1,13 +1,14 @@
-use std::io::stdout;
+#[feature(globs)];
 
+use std::io::stdout;
 use game::*;
 
 mod game;
 
 fn main() {
     let mut g = GameState::new(~[
-        Player { name: ~"Player 1", position: (10, 10), direction: North, is_alive: true, get_action: |_| { North } },
-        Player { name: ~"Player 2", position: (10, 20), direction: South, is_alive: true, get_action: |_| { West } }
+        Player { name: ~"Player 1", position: (10, 10), direction: North, is_alive: true, behaviour: ~GoNorth as ~PlayerBehaviour },
+        Player { name: ~"Player 2", position: (10, 20), direction: South, is_alive: true, behaviour: ~GoNorth as ~PlayerBehaviour }
     ]);
 
     while !g.status.is_over() {
@@ -18,12 +19,12 @@ fn main() {
         for row in g.board.iter() {
             for tile in row.iter() {
                 print(match *tile {
-                    PlayerWall(x) => fmt!("%u", x),
+                    PlayerWall(x) => format!("{:u}", x),
                     Empty => ~"."
                 })
             }
             println("");
         }
-        println(fmt!("Turn: %u, status: %?", g.turn, g.status))
+        println(format!("Turn: {}, status: {}", g.turn, g.status.to_str()))
     }
 }
