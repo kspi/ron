@@ -13,11 +13,11 @@ enum Direction {
 impl Direction {
     fn apply_to(&self, position: Vec) -> Vec {
         match position {
-            (x, y) => match *self {
-                North => (x - 1, y),
-                West => (x, y + 1),
-                South => (x + 1, y),
-                East => (x, y - 1)
+            (r, c) => match *self {
+                North => (r - 1, c),
+                West => (r, c + 1),
+                South => (r + 1, c),
+                East => (r, c - 1)
             }
         }
     }
