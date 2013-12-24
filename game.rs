@@ -1,8 +1,9 @@
 pub static board_width : int = 80;
-pub static board_height : int = 24;
+pub static board_height : int = 40;
 
 type Vec = (int, int);
 
+#[deriving(Eq)]
 pub enum Direction {
     North,
     West,
@@ -11,6 +12,24 @@ pub enum Direction {
 }
 
 impl Direction {
+    pub fn left(&self) -> Direction {
+        match *self {
+            North => West,
+            East => North,
+            South => East,
+            West => South
+        }
+    }
+
+    pub fn right(&self) -> Direction {
+        match *self {
+            North => East,
+            East => South,
+            South => West,
+            West => North
+        }
+    }
+
     fn apply_to(&self, position: Vec) -> Vec {
         match position {
             (r, c) => match *self {
@@ -26,14 +45,7 @@ impl Direction {
 type PlayerIndex = uint;
 
 pub trait PlayerBehaviour {
-    fn decide_direction(&self, &GameState) -> Direction;
-}
-
-pub struct GoNorth();
-impl PlayerBehaviour for GoNorth {
-    fn decide_direction(&self, _: &GameState) -> Direction {
-        North
-    }
+    fn decide_direction(&self, &GameState) -> (~PlayerBehaviour, Direction);
 }
 
 pub struct Player {
@@ -118,7 +130,7 @@ impl GameState {
     }
 
     fn player_after(&self, current: PlayerIndex) -> PlayerIndex {
-        assert!(self.alive_count > 1);
+        assert!(self.alive_count >= 1);
         let mut cur = (current + 1) % self.players.len();
         while !self.players[cur].is_alive {
             cur = (cur + 1) % self.players.len();
@@ -133,10 +145,16 @@ impl GameState {
         }
     }
 
+    pub fn decide_direction(&mut self, player: PlayerIndex) -> Direction {
+        let (behaviour, direction) = self.players[player].behaviour.decide_direction(self);
+        self.players[player].behaviour = behaviour;
+        self.players[player].direction = direction;
+        direction
+    }
+
     pub fn do_turn(&mut self) {
         let current = self.current_player();
-        let direction = self.players[current].behaviour.decide_direction(self);
-        self.players[current].direction = direction;
+        let direction = self.decide_direction(current);
         let new_position = direction.apply_to(self.players[current].position);
 
         if self.can_move_to(new_position) {
@@ -148,7 +166,7 @@ impl GameState {
         }
 
         if self.alive_count == 1 {
-            self.status = Won(current)
+            self.status = Won(self.player_after(current))
         } else {
             self.status = PlayerTurn(self.player_after(current))
         }
