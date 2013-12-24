@@ -1,5 +1,3 @@
-use std::io::stdout;
-
 pub static board_width : int = 80;
 pub static board_height : int = 24;
 
@@ -27,38 +25,12 @@ impl Direction {
 
 type PlayerIndex = uint;
 
-pub enum Action {
-    MoveForward,
-    MoveLeft,
-    MoveRight
-}
-
-impl Action {
-    fn apply_to(&self, direction : Direction) -> Direction {
-        match *self {
-            MoveForward => direction,
-            MoveLeft => match direction {
-                North => East,
-                West => North,
-                South => West,
-                East => South
-            },
-            MoveRight => match direction {
-                North => West,
-                West  => South,
-                South => East,
-                East  => North
-            }
-        }
-    }
-}
-
 struct Player {
     name: ~str,
     position: Vec,
     direction: Direction,
     is_alive: bool,
-    get_action: ~fn(&GameState) -> Action
+    get_action: ~fn(&GameState) -> Direction
 }
 
 pub enum Tile {
@@ -104,8 +76,8 @@ impl GameState {
         let mut s = GameState {
             turn: 0,
             players: ~[
-                Player { name: ~"Player 1", position: (10, 10), direction: North, is_alive: true, get_action: |_| { MoveForward } },
-                Player { name: ~"Player 2", position: (10, 20), direction: South, is_alive: true, get_action: |_| { MoveForward } }
+                Player { name: ~"Player 1", position: (10, 10), direction: North, is_alive: true, get_action: |_| { North } },
+                Player { name: ~"Player 2", position: (10, 20), direction: South, is_alive: true, get_action: |_| { West } }
             ],
             alive_count: 2,
             status: PlayerTurn(0),
@@ -136,7 +108,7 @@ impl GameState {
         }
     }
 
-    fn get_player_after(&self, current: PlayerIndex) -> PlayerIndex {
+    fn player_after(&self, current: PlayerIndex) -> PlayerIndex {
         assert!(self.alive_count > 1);
         let mut cur = (current + 1) % self.players.len();
         while !self.players[cur].is_alive {
@@ -145,55 +117,33 @@ impl GameState {
         cur
     }
 
-    fn do_turn(&mut self) {
+    pub fn current_player(&self) -> PlayerIndex {
         match self.status {
-            PlayerTurn(current) => {
-                let action = (self.players[current].get_action)(self);
-                let direction = action.apply_to(self.players[current].direction);
-                self.players[current].direction = direction;
-                let new_position = direction.apply_to(self.players[current].position);
-
-                if self.can_move_to(new_position) {
-                    self.players[current].position = new_position;
-                    self.place_wall(current);
-                } else {
-                    self.players[current].is_alive = false;
-                    self.alive_count -= 1;
-                }
-
-                if self.alive_count == 1 {
-                    self.status = Won(current)
-                } else {
-                    self.status = PlayerTurn(self.get_player_after(current))
-                }
-
-                self.turn += 1;
-            },
-            _ => fail!("GameState::do_turn called after game over.")
+            PlayerTurn(x) => x,
+            _ => fail!("GameState::current_player called after game over")
         }
     }
 
-    fn print(&self) {
-        print("\x1b[2J\x1b[1;1H");
-        stdout().flush();
-        for row in self.board.iter() {
-            for tile in row.iter() {
-                if tile.is_passable() {
-                    print(".");
-                } else {
-                    print("#");
-                }
-            }
-            println("");
-        }
-        println(fmt!("Turn: %u, status: %?", self.turn, self.status))
-    }
+    pub fn do_turn(&mut self) {
+        let current = self.current_player();
+        let direction = (self.players[current].get_action)(self);
+        self.players[current].direction = direction;
+        let new_position = direction.apply_to(self.players[current].position);
 
-    pub fn run(&mut self) {
-        self.print();
-        while !self.status.is_over() {
-            self.do_turn();
-            self.print();
+        if self.can_move_to(new_position) {
+            self.players[current].position = new_position;
+            self.place_wall(current);
+        } else {
+            self.players[current].is_alive = false;
+            self.alive_count -= 1;
         }
+
+        if self.alive_count == 1 {
+            self.status = Won(current)
+        } else {
+            self.status = PlayerTurn(self.player_after(current))
+        }
+
+        self.turn += 1;
     }
 }
