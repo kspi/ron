@@ -1,9 +1,14 @@
 use std::io::stdout;
 
+use game::*;
+
 mod game;
 
 fn main() {
-    let mut g = game::GameState::new();
+    let mut g = GameState::new(~[
+        Player { name: ~"Player 1", position: (10, 10), direction: North, is_alive: true, get_action: |_| { North } },
+        Player { name: ~"Player 2", position: (10, 20), direction: South, is_alive: true, get_action: |_| { West } }
+    ]);
 
     while !g.status.is_over() {
         g.do_turn();
@@ -13,8 +18,8 @@ fn main() {
         for row in g.board.iter() {
             for tile in row.iter() {
                 print(match *tile {
-                    game::PlayerWall(x) => fmt!("%u", x),
-                    game::Empty => ~"."
+                    PlayerWall(x) => fmt!("%u", x),
+                    Empty => ~"."
                 })
             }
             println("");

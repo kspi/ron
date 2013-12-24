@@ -3,7 +3,7 @@ pub static board_height : int = 24;
 
 type Vec = (int, int);
 
-enum Direction {
+pub enum Direction {
     North,
     West,
     South,
@@ -25,7 +25,7 @@ impl Direction {
 
 type PlayerIndex = uint;
 
-struct Player {
+pub struct Player {
     name: ~str,
     position: Vec,
     direction: Direction,
@@ -72,13 +72,10 @@ pub struct GameState {
 }
 
 impl GameState {
-    pub fn new() -> GameState {
+    pub fn new(players: ~[Player]) -> GameState {
         let mut s = GameState {
             turn: 0,
-            players: ~[
-                Player { name: ~"Player 1", position: (10, 10), direction: North, is_alive: true, get_action: |_| { North } },
-                Player { name: ~"Player 2", position: (10, 20), direction: South, is_alive: true, get_action: |_| { West } }
-            ],
+            players: players,
             alive_count: 2,
             status: PlayerTurn(0),
             board: [[Empty, ..board_width], ..board_height]
