@@ -20,7 +20,7 @@ fn random_bernoulli(p: f64) -> bool {
     x < p
 }
 
-static EXPLORE_DEPTH_FALLOFF: f64 = 3.0;
+static EXPLORE_DEPTH_FALLOFF: f64 = 4.0;
 fn explore_probability(depth: uint) -> f64 {
     if depth <= 1 {
         1.0
@@ -51,11 +51,7 @@ fn minimize(player: PlayerIndex, game: &GameState, depth: uint) -> (Action, f64)
             maction = *action;
         }
     }
-    if m == f64::INFINITY {
-        (maction, 0.0)
-    } else {
-        (maction, m)
-    }
+    (maction, m)
 }
 
 fn maximize(player: PlayerIndex, game: &GameState, depth: uint) -> (Action, f64) {
@@ -80,11 +76,7 @@ fn maximize(player: PlayerIndex, game: &GameState, depth: uint) -> (Action, f64)
             maction = *action;
         }
     }
-    if m == f64::INFINITY {
-        (maction, 0.0)
-    } else {
-        (maction, m)
-    }
+    (maction, m)
 }
 
 impl PlayerBehaviour for Minimax {
