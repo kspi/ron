@@ -7,6 +7,7 @@ use ncurses::*;
 use game::*;
 use behaviour::minimax::Minimax;
 use std::io::Timer;
+use std::os;
 
 mod game;
 mod behaviour {
@@ -72,11 +73,15 @@ fn main() {
     ]);
 
     let mut behaviours = ~[
-        //KeyboardControlled::new(None),
         Minimax::new(),
         Minimax::new()
     ];
 
+    let all_args = os::args();
+    let options = all_args.slice(0, all_args.len());
+    let keyboard_control = options.iter().any(|x| *x == ~"-k" || *x == ~"--keyword");
+
+    // Curses init.
     initscr();
     raw();
     keypad(stdscr, true);
@@ -107,7 +112,9 @@ fn main() {
             }
         }
 
-        //behaviours[0] = KeyboardControlled::new(key_dir);
+        if (keyboard_control) {
+            behaviours[0] = KeyboardControlled::new(key_dir);
+        }
 
         g.do_turn(behaviours);
 
