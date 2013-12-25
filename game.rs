@@ -39,6 +39,18 @@ impl Direction {
             }
         }
     }
+
+    pub fn action_for(&self, target: Direction) -> Option<Action> {
+        if *self == target {
+            Some(MoveForward)
+        } else if self.left() == target {
+            Some(TurnLeft)
+        } else if self.right() == target {
+            Some(TurnRight)
+        } else {
+            None
+        }
+    }
 }
 
 #[deriving(ToStr, Clone)]

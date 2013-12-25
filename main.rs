@@ -1,5 +1,8 @@
 #[feature(globs)];
 
+extern mod ncurses;
+
+use ncurses::*;
 use game::*;
 use behaviour::stupid_random::StupidRandom;
 use behaviour::static_action::StaticAction;
@@ -20,6 +23,47 @@ fn direction_char(direction: Direction) -> ~str {
     }
 }
 
+fn key_direction(key: i32) -> Option<Direction> {
+    match key {
+        KEY_UP => Some(North),
+        107 => Some(North), // k
+        KEY_RIGHT => Some(East),
+        108 => Some(East), // l
+        KEY_DOWN => Some(South),
+        106 => Some(South), // j
+        KEY_LEFT => Some(West),
+        104 => Some(West), // h
+        _ => None
+    }
+
+}
+
+#[deriving(ToStr)]
+pub struct KeyboardControlled {
+    maybe_direction: Option<Direction>
+}
+
+impl KeyboardControlled {
+    pub fn new(d: Option<Direction>) -> ~PlayerBehaviour {
+        ~KeyboardControlled {
+            maybe_direction: d
+        } as ~PlayerBehaviour
+    }
+}
+
+impl PlayerBehaviour for KeyboardControlled {
+    fn act(&mut self, game: &GameState) -> Action {
+        match self.maybe_direction {
+            None => MoveForward,
+            Some(direction) => {
+                (game.players[game.current_player()]
+                                .direction.action_for(direction)
+                                .unwrap_or(MoveForward))
+            }
+        }
+    }
+}
+
 fn main() {
     let mut g = GameState::new(80, 30, ~[
         Player { name: ~"Player 1", position: (15, 30), direction: North, is_alive: true },
@@ -27,26 +71,49 @@ fn main() {
     ]);
 
     let mut behaviours = ~[
-        StupidRandom::new(5.0),
-        StaticAction::new(MoveForward)
+        KeyboardControlled::new(None),
+        StupidRandom::new(5.0)
     ];
 
+    initscr();
+    raw();
+    keypad(stdscr, true);
+    noecho();
+    timeout(0);
+
+    let mut key_dir: Option<Direction> = None;
     while !g.status.is_over() {
+        clear();
+        move(0, 0);
+
+        {
+            let mut key = getch();
+            while key != ERR {
+                if key == 113 { // q
+                    return;
+                }
+                key_direction(key).map(|dir| { key_dir = Some(dir); });
+                key = getch();
+            }
+        }
+
+        behaviours[0] = KeyboardControlled::new(key_dir);
+
         g.do_turn(behaviours);
 
-        print("\x1b[2J\x1b[1;1H");
         for row in g.board.iter() {
             for tile in row.iter() {
-                print(match *tile {
+                printw(match *tile {
                     PlayerHead(p) => direction_char(g.players[p].direction),
                     PlayerWall(x) => format!("{:u}", x),
                     Crash => ~"X",
                     Empty => ~"."
-                })
+                });
             }
-            println("");
+            printw("\n");
         }
-        println(format!("Turn: {}, status: {}", g.turn, g.status.to_str()));
+        printw(format!("Turn: {}, status: {}\n", g.turn, g.status.to_str()));
+        refresh();
         sleep(100);
     }
 }
