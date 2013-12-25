@@ -1,4 +1,7 @@
 SRC := $(wildcard *.rs) $(wildcard behaviour/*.rs)
 
-main: $(SRC) /usr/bin/rustc
-	rustc main.rs
+ron: $(SRC) /usr/bin/rustc
+	rustc -o $@ main.rs
+
+clean:
+	rm -f ron
