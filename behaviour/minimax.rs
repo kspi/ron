@@ -57,6 +57,12 @@ fn explore_probability(depth: uint, falloff: f64) -> f64 {
     }
 }
 
+fn position_distance(a: Position, b: Position) -> int {
+    let (ar, ac) = a;
+    let (br, bc) = b;
+    max((ar - br).abs(), (ac - bc).abs())
+}
+
 fn minimax(player: PlayerIndex, game: &GameState, depth: uint, minimize: bool, start_time: u64) -> f64 {
     if game.status.is_over() {
         if game.winner() == player {
@@ -70,7 +76,7 @@ fn minimax(player: PlayerIndex, game: &GameState, depth: uint, minimize: bool, s
         let our_pos = game.players[player].position;
         let other_player = game.player_after(player);
         let their_pos = game.players[other_player].position;
-        return (flood_count(our_pos, game) as f64) - (flood_count(their_pos, game) as f64);
+        return 1e3 / position_distance(our_pos, their_pos) as f64 + (flood_count(our_pos, game) as f64) - (flood_count(their_pos, game) as f64);
     }
     let init = if minimize { f64::INFINITY } else { -f64::INFINITY };
     let foldfn = if minimize { min } else { max };
