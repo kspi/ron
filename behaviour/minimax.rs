@@ -60,17 +60,17 @@ fn explore_probability(depth: uint, falloff: f64) -> f64 {
 fn minimax(player: PlayerIndex, game: &GameState, depth: uint, minimize: bool, start_time: u64) -> f64 {
     if game.status.is_over() {
         if game.winner() == player {
-            return f64::INFINITY;
+            return 1e6 + 1e6 / game.turn as f64;
         } else {
-            return -f64::INFINITY;
+            return -1e6 - 1e6 / game.turn as f64;
         }
     }
     let time_progress = ((precise_time_ns() - start_time) as f64) / (TARGET_ACT_TIME as f64);
-    if time_progress > 0.9 || !random_bernoulli(explore_probability(depth, (1.0 - time_progress) * 4.0)) {
+    if time_progress > 0.6 || !random_bernoulli(explore_probability(depth, (1.0 - time_progress) * 10.0)) {
         let our_pos = game.players[player].position;
         let other_player = game.player_after(player);
         let their_pos = game.players[other_player].position;
-        return (flood_count(our_pos, game) as f64) - (flood_count(their_pos, game) as f64) / 2.0;
+        return (flood_count(our_pos, game) as f64) - (flood_count(their_pos, game) as f64);
     }
     let init = if minimize { f64::INFINITY } else { -f64::INFINITY };
     let foldfn = if minimize { min } else { max };
@@ -84,41 +84,19 @@ fn minimax(player: PlayerIndex, game: &GameState, depth: uint, minimize: bool, s
 impl PlayerBehaviour for Minimax {
     fn act(&mut self, game: &GameState) -> Action {
         let player_index = game.current_player();
-        let player = &game.players[player_index];
-        let forward_pos = player.direction.apply_to(player.position);
-        let left_pos = player.direction.left().apply_to(player.position);
-        let right_pos = player.direction.right().apply_to(player.position);
-        let forward_free = game.can_move_to(forward_pos);
-        let left_free = game.can_move_to(left_pos);
-        let right_free = game.can_move_to(right_pos);
 
-        if forward_free && !left_free && !right_free {
-            return MoveForward;
-        } else if !forward_free && !left_free {
-            return TurnRight;
-        } else if !forward_free && !right_free {
-            return TurnLeft;
-        }
-
-        let actions = if random_bernoulli(0.9) {
+        let actions = if random_bernoulli(0.99) {
             ~[MoveForward, TurnLeft, TurnRight]
         } else if random_bernoulli(0.5) {
             ~[TurnLeft, TurnRight, MoveForward]
         } else {
             ~[TurnRight, TurnLeft, MoveForward]
         };
-        let (action, _) = actions.iter().fold(
-            (MoveForward, -f64::INFINITY),
-            |(maxa, maxf), action| {
-                let new_game = game_apply_action(game, *action);
-                let f = minimax(player_index, new_game, 0, true, precise_time_ns());
-                if f > maxf {
-                    (*action, f)
-                } else {
-                    (maxa, maxf)
-                }
-            }
-        );
-        action
+
+        let best_action = *actions.iter().max_by(|action| {
+            let new_game = game_apply_action(game, **action);
+            minimax(player_index, new_game, 0, true, precise_time_ns())
+        }).unwrap();
+        best_action
     }
 }
