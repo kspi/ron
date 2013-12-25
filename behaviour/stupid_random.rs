@@ -17,9 +17,13 @@ impl StupidRandom {
     }
 }
 
-fn random_turn_for(direction: Direction) -> Direction {
+fn random_bernoulli(p: f64) -> bool {
     let x: f64 = random();
-    if x < 0.5 {
+    x < p
+}
+
+fn random_turn_for(direction: Direction) -> Direction {
+    if random_bernoulli(0.5) {
         direction.left()
     } else {
         direction.right()
@@ -29,8 +33,7 @@ fn random_turn_for(direction: Direction) -> Direction {
 impl PlayerBehaviour for StupidRandom {
     fn decide_direction(&mut self, g: &GameState) -> Direction {
         let change_probability = 1f64 - exp(-(self.turns_since_change as f64) / self.stability);
-        let x: f64 = random();
-        if x < change_probability {
+        if random_bernoulli(change_probability) {
             self.turns_since_change = 0;
             random_turn_for(g.players[g.current_player()].direction)
         } else {
