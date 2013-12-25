@@ -83,6 +83,9 @@ fn main() {
     noecho();
     timeout(0);
     curs_set(CURSOR_INVISIBLE);
+    start_color();
+    init_pair(1, COLOR_RED, COLOR_BLACK);
+    init_pair(2, COLOR_CYAN, COLOR_BLACK);
 
     let mut key_dir: Option<Direction> = None;
 
@@ -110,12 +113,22 @@ fn main() {
 
         for row in g.board.iter() {
             for tile in row.iter() {
-                printw(match *tile {
-                    PlayerHead(p) => direction_char(g.players[p].direction),
-                    PlayerWall(x) => format!("{:u}", x),
-                    Crash => ~"X",
-                    Empty => ~"."
-                });
+                match *tile {
+                    PlayerHead(p) => {
+                        attron(A_BOLD());
+                        attron(COLOR_PAIR(p as i16 + 1));
+                        printw(direction_char(g.players[p].direction));
+                        attroff(COLOR_PAIR(p as i16 + 1));
+                        attroff(A_BOLD());
+                    }
+                    PlayerWall(x) => {
+                        attron(COLOR_PAIR(x as i16 + 1));
+                        printw("#");
+                        attroff(COLOR_PAIR(x as i16 + 1));
+                    }
+                    Crash => { printw("X"); }
+                    Empty => { printw("."); }
+                }
             }
             printw("\n");
         }
