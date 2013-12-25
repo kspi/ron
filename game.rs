@@ -70,7 +70,7 @@ impl Action {
     }
 }
 
-type PlayerIndex = uint;
+pub type PlayerIndex = uint;
 
 #[deriving(ToStr, Clone)]
 pub struct Player {
@@ -182,6 +182,13 @@ impl GameState {
         match self.status {
             PlayerTurn(x) => x,
             _ => fail!("GameState::current_player called after game over")
+        }
+    }
+
+    pub fn winner(&self) -> PlayerIndex {
+        match self.status {
+            Won(x) => x,
+            _ => fail!("GameState::winner called before game over")
         }
     }
 

@@ -4,14 +4,14 @@ extern mod ncurses;
 
 use ncurses::*;
 use game::*;
-use behaviour::stupid_random::StupidRandom;
-use behaviour::static_action::StaticAction;
-use std::io::timer::sleep;
+use behaviour::minimax::Minimax;
+use std::io::Timer;
 
 mod game;
 mod behaviour {
     pub mod static_action;
     pub mod stupid_random;
+    pub mod minimax;
 }
 
 fn direction_char(direction: Direction) -> ~str {
@@ -72,7 +72,7 @@ fn main() {
 
     let mut behaviours = ~[
         KeyboardControlled::new(None),
-        StupidRandom::new(5.0)
+        Minimax::new()
     ];
 
     initscr();
@@ -80,8 +80,13 @@ fn main() {
     keypad(stdscr, true);
     noecho();
     timeout(0);
+    curs_set(CURSOR_INVISIBLE);
 
     let mut key_dir: Option<Direction> = None;
+
+    let mut timer = Timer::new().unwrap();
+    let sleeper = timer.periodic(50);
+
     while !g.status.is_over() {
         move(0, 0);
 
@@ -89,6 +94,7 @@ fn main() {
             let mut key = getch();
             while key != ERR {
                 if key == 113 { // q
+                    endwin();
                     return;
                 }
                 key_direction(key).map(|dir| { key_dir = Some(dir); });
@@ -113,6 +119,12 @@ fn main() {
         }
         printw(format!("Turn: {}, status: {}\n", g.turn, g.status.to_str()));
         refresh();
-        sleep(50);
+        sleeper.recv();
     }
+
+    timeout(-1);
+    printw("Press any key to exit.");
+    getch();
+
+    endwin();
 }
