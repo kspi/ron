@@ -1,6 +1,6 @@
 use std::vec;
 
-type Vec = (int, int);
+type Position = (int, int);
 
 #[deriving(Eq, ToStr, Clone)]
 pub enum Direction {
@@ -29,7 +29,7 @@ impl Direction {
         }
     }
 
-    fn apply_to(&self, position: Vec) -> Vec {
+    fn apply_to(&self, position: Position) -> Position {
         match position {
             (r, c) => match *self {
                 North => (r - 1, c),
@@ -63,7 +63,7 @@ type PlayerIndex = uint;
 #[deriving(ToStr, Clone)]
 pub struct Player {
     name: ~str,
-    position: Vec,
+    position: Position,
     direction: Direction,
     is_alive: bool
 }
@@ -132,7 +132,7 @@ impl GameState {
         s
     }
 
-    fn move_to(&mut self, player: PlayerIndex, position: Vec) {
+    fn move_to(&mut self, player: PlayerIndex, position: Position) {
         match (self.players[player].position, position) {
             ((r, c), (nr, nc)) => {
                 self.board[r][c] = PlayerWall(player);
@@ -142,7 +142,7 @@ impl GameState {
         self.players[player].position = position;
     }
 
-    fn can_move_to(&self, position: Vec) -> bool {
+    fn can_move_to(&self, position: Position) -> bool {
         match position {
             (row, column) => {
                 0 <= row &&
