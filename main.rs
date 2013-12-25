@@ -83,7 +83,6 @@ fn main() {
 
     let mut key_dir: Option<Direction> = None;
     while !g.status.is_over() {
-        clear();
         move(0, 0);
 
         {
@@ -114,6 +113,6 @@ fn main() {
         }
         printw(format!("Turn: {}, status: {}\n", g.turn, g.status.to_str()));
         refresh();
-        sleep(100);
+        sleep(50);
     }
 }

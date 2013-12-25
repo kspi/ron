@@ -37,20 +37,23 @@ impl PlayerBehaviour for StupidRandom {
         let forward_pos = player.direction.apply_to(player.position);
         let left_pos = player.direction.left().apply_to(player.position);
         let right_pos = player.direction.right().apply_to(player.position);
+        let forward_free = game.can_move_to(forward_pos);
+        let left_free = game.can_move_to(left_pos);
+        let right_free = game.can_move_to(right_pos);
         let change_probability = 1f64 - exp(-(self.turns_since_change as f64) / self.stability);
 
-        if !game.can_move_to(forward_pos) || random_bernoulli(change_probability){
+        if forward_free && ((!left_free && !right_free) || !random_bernoulli(change_probability)) {
+            self.turns_since_change += 1;
+            MoveForward
+        } else {
             self.turns_since_change = 0;
-            if !game.can_move_to(left_pos) {
+            if !left_free {
                 TurnRight
-            } else if !game.can_move_to(right_pos) {
+            } else if !right_free {
                 TurnLeft
             } else {
                 random_turn()
             }
-        } else {
-            self.turns_since_change += 1;
-            MoveForward
         }
     }
 }
