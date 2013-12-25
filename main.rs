@@ -95,7 +95,7 @@ fn main() {
     let mut key_dir: Option<Direction> = None;
 
     let mut timer = Timer::new().unwrap();
-    let sleeper = timer.periodic(50);
+    let sleeper = timer.periodic(100);
 
     while !g.status.is_over() {
         move(0, 0);

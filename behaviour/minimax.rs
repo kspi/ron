@@ -66,7 +66,7 @@ fn minimax(player: PlayerIndex, game: &GameState, depth: uint, minimize: bool, s
         }
     }
     let time_progress = ((precise_time_ns() - start_time) as f64) / (TARGET_ACT_TIME as f64);
-    if time_progress > 0.6 || !random_bernoulli(explore_probability(depth, (1.0 - time_progress) * 10.0)) {
+    if time_progress > 1.0 || !random_bernoulli(explore_probability(depth, (1.0 - time_progress) * 20.0)) {
         let our_pos = game.players[player].position;
         let other_player = game.player_after(player);
         let their_pos = game.players[other_player].position;
@@ -85,7 +85,7 @@ impl PlayerBehaviour for Minimax {
     fn act(&mut self, game: &GameState) -> Action {
         let player_index = game.current_player();
 
-        let actions = if random_bernoulli(0.99) {
+        let actions = if random_bernoulli(0.60) {
             ~[MoveForward, TurnLeft, TurnRight]
         } else if random_bernoulli(0.5) {
             ~[TurnLeft, TurnRight, MoveForward]
