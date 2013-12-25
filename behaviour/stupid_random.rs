@@ -22,23 +22,19 @@ fn random_bernoulli(p: f64) -> bool {
     x < p
 }
 
-fn random_turn_for(direction: Direction) -> Direction {
-    if random_bernoulli(0.5) {
-        direction.left()
-    } else {
-        direction.right()
-    }
-}
-
 impl PlayerBehaviour for StupidRandom {
-    fn decide_direction(&mut self, g: &GameState) -> Direction {
+    fn act(&mut self, _: &GameState) -> Action {
         let change_probability = 1f64 - exp(-(self.turns_since_change as f64) / self.stability);
         if random_bernoulli(change_probability) {
             self.turns_since_change = 0;
-            random_turn_for(g.players[g.current_player()].direction)
+            if random_bernoulli(0.5) {
+                TurnLeft
+            } else {
+                TurnRight
+            }
         } else {
             self.turns_since_change += 1;
-            g.players[g.current_player()].direction
+            MoveForward
         }
     }
 }

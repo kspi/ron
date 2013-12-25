@@ -1,11 +1,13 @@
 #[feature(globs)];
 
 use game::*;
-use behaviour::stupid_random::*;
+use behaviour::stupid_random::StupidRandom;
+use behaviour::static_action::StaticAction;
 use std::io::timer::sleep;
 
 mod game;
 mod behaviour {
+    pub mod static_action;
     pub mod stupid_random;
 }
 
@@ -26,7 +28,7 @@ fn main() {
 
     let mut behaviours = ~[
         StupidRandom::new(5.0),
-        StupidRandom::new(10.0)
+        StaticAction::new(MoveForward)
     ];
 
     while !g.status.is_over() {

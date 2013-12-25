@@ -41,6 +41,23 @@ impl Direction {
     }
 }
 
+#[deriving(ToStr, Clone)]
+pub enum Action {
+    MoveForward,
+    TurnLeft,
+    TurnRight
+}
+
+impl Action {
+    fn apply_to(&self, direction : Direction) -> Direction {
+        match *self {
+            MoveForward => direction,
+            TurnLeft => direction.left(),
+            TurnRight => direction.right()
+        }
+    }
+}
+
 type PlayerIndex = uint;
 
 #[deriving(ToStr, Clone)]
@@ -52,7 +69,7 @@ pub struct Player {
 }
 
 pub trait PlayerBehaviour {
-    fn decide_direction(&mut self, &GameState) -> Direction;
+    fn act(&mut self, &GameState) -> Action;
 }
 
 #[deriving(ToStr, Clone)]
@@ -155,7 +172,9 @@ impl GameState {
 
     pub fn do_turn(&mut self, behaviours: &mut [~PlayerBehaviour]) {
         let current = self.current_player();
-        let direction = behaviours[current].decide_direction(self);
+        let cur_direction = self.players[current].direction;
+        let action = behaviours[current].act(self);
+        let direction = action.apply_to(cur_direction);
         self.players[current].direction = direction;
         let new_position = direction.apply_to(self.players[current].position);
 
