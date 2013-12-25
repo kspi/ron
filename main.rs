@@ -1,6 +1,5 @@
 #[feature(globs)];
 
-use std::io::stdout;
 use game::*;
 use behaviour::stupid_random::*;
 use std::io::timer::sleep;
@@ -10,20 +9,34 @@ mod behaviour {
     pub mod stupid_random;
 }
 
+fn direction_char(direction: Direction) -> ~str {
+    match direction {
+        North => ~"^",
+        East => ~">",
+        South => ~"v",
+        West => ~"<"
+    }
+}
+
 fn main() {
-    let mut g = GameState::new(~[
-        Player { name: ~"Player 1", position: (20, 30), direction: North, is_alive: true, behaviour: StupidRandom::new(5.0) },
-        Player { name: ~"Player 2", position: (20, 50), direction: South, is_alive: true, behaviour: StupidRandom::new(1.0) }
+    let mut g = GameState::new(80, 30, ~[
+        Player { name: ~"Player 1", position: (15, 30), direction: North, is_alive: true },
+        Player { name: ~"Player 2", position: (15, 50), direction: South, is_alive: true }
     ]);
 
+    let mut behaviours = ~[
+        StupidRandom::new(5.0),
+        StupidRandom::new(10.0)
+    ];
+
     while !g.status.is_over() {
-        g.do_turn();
+        g.do_turn(behaviours);
 
         print("\x1b[2J\x1b[1;1H");
-        stdout().flush();
         for row in g.board.iter() {
             for tile in row.iter() {
                 print(match *tile {
+                    PlayerHead(p) => direction_char(g.players[p].direction),
                     PlayerWall(x) => format!("{:u}", x),
                     Empty => ~"."
                 })

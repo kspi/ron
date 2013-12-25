@@ -1,9 +1,8 @@
-pub static board_width : int = 80;
-pub static board_height : int = 40;
+use std::vec;
 
 type Vec = (int, int);
 
-#[deriving(Eq)]
+#[deriving(Eq, ToStr, Clone)]
 pub enum Direction {
     North,
     West,
@@ -34,9 +33,9 @@ impl Direction {
         match position {
             (r, c) => match *self {
                 North => (r - 1, c),
-                West => (r, c + 1),
+                West => (r, c - 1),
                 South => (r + 1, c),
-                East => (r, c - 1)
+                East => (r, c + 1)
             }
         }
     }
@@ -44,21 +43,23 @@ impl Direction {
 
 type PlayerIndex = uint;
 
-pub trait PlayerBehaviour {
-    fn decide_direction(&self, &GameState) -> (~PlayerBehaviour, Direction);
-}
-
+#[deriving(ToStr, Clone)]
 pub struct Player {
     name: ~str,
     position: Vec,
     direction: Direction,
-    is_alive: bool,
-    behaviour: ~PlayerBehaviour
+    is_alive: bool
 }
 
+pub trait PlayerBehaviour {
+    fn decide_direction(&mut self, &GameState) -> Direction;
+}
+
+#[deriving(ToStr, Clone)]
 pub enum Tile {
     Empty,
-    PlayerWall(PlayerIndex)
+    PlayerWall(PlayerIndex),
+    PlayerHead(PlayerIndex)
 }
 
 impl Tile {
@@ -70,7 +71,7 @@ impl Tile {
     }
 }
 
-#[deriving(ToStr)]
+#[deriving(ToStr, Clone)]
 pub enum GameStatus {
     PlayerTurn(PlayerIndex),
     Won(PlayerIndex)
@@ -85,45 +86,52 @@ impl GameStatus {
     }
 }
 
-pub type Board = [[Tile, ..board_width], ..board_height];
-
+#[deriving(Clone, ToStr)]
 pub struct GameState {
     turn: uint,
     players: ~[Player],
     alive_count: uint,
     status: GameStatus,
-    board: Board
+    board_width: uint,
+    board_height: uint,
+    board: ~[~[Tile]]
 }
 
 impl GameState {
-    pub fn new(players: ~[Player]) -> GameState {
+    pub fn new(board_width: uint, board_height: uint, players: ~[Player]) -> GameState {
         let mut s = GameState {
             turn: 0,
             players: players,
             alive_count: 2,
             status: PlayerTurn(0),
-            board: [[Empty, ..board_width], ..board_height]
+            board_width: board_width,
+            board_height: board_height,
+            board: vec::from_elem(board_height, vec::from_elem(board_width, Empty))
         };
         // Place initial walls.
-        for player_i in range(0, s.alive_count) {
-            s.place_wall(player_i)
+        for i in range(0, s.alive_count) {
+            s.move_to(i, s.players[i].position)
         };
         s
     }
 
-    fn place_wall(&mut self, owner: PlayerIndex) {
-        match self.players[owner].position {
-            (r, c) => self.board[r][c] = PlayerWall(owner)
+    fn move_to(&mut self, player: PlayerIndex, position: Vec) {
+        match (self.players[player].position, position) {
+            ((r, c), (nr, nc)) => {
+                self.board[r][c] = PlayerWall(player);
+                self.board[nr][nc] = PlayerHead(player);
+            }
         }
+        self.players[player].position = position;
     }
 
     fn can_move_to(&self, position: Vec) -> bool {
         match position {
             (row, column) => {
                 0 <= row &&
-                row < board_height &&
+                row < self.board_height as int &&
                 0 <= column &&
-                column < board_width &&
+                column < self.board_width as int &&
                 self.board[row][column].is_passable()
             }
         }
@@ -145,30 +153,24 @@ impl GameState {
         }
     }
 
-    pub fn decide_direction(&mut self, player: PlayerIndex) -> Direction {
-        let (behaviour, direction) = self.players[player].behaviour.decide_direction(self);
-        self.players[player].behaviour = behaviour;
-        self.players[player].direction = direction;
-        direction
-    }
-
-    pub fn do_turn(&mut self) {
+    pub fn do_turn(&mut self, behaviours: &mut [~PlayerBehaviour]) {
         let current = self.current_player();
-        let direction = self.decide_direction(current);
+        let direction = behaviours[current].decide_direction(self);
+        self.players[current].direction = direction;
         let new_position = direction.apply_to(self.players[current].position);
 
         if self.can_move_to(new_position) {
-            self.players[current].position = new_position;
-            self.place_wall(current);
+            self.move_to(current, new_position)
         } else {
             self.players[current].is_alive = false;
             self.alive_count -= 1;
         }
 
+        let next_player = self.player_after(current);
         if self.alive_count == 1 {
-            self.status = Won(self.player_after(current))
+            self.status = Won(next_player)
         } else {
-            self.status = PlayerTurn(self.player_after(current))
+            self.status = PlayerTurn(next_player)
         }
 
         self.turn += 1;
