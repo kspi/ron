@@ -76,7 +76,8 @@ pub trait PlayerBehaviour {
 pub enum Tile {
     Empty,
     PlayerWall(PlayerIndex),
-    PlayerHead(PlayerIndex)
+    PlayerHead(PlayerIndex),
+    Crash
 }
 
 impl Tile {
@@ -127,18 +128,20 @@ impl GameState {
         };
         // Place initial walls.
         for i in range(0, s.alive_count) {
-            s.move_to(i, s.players[i].position)
+            s.board_set(s.players[i].position, PlayerHead(i))
         };
         s
     }
 
-    fn move_to(&mut self, player: PlayerIndex, position: Position) {
-        match (self.players[player].position, position) {
-            ((r, c), (nr, nc)) => {
-                self.board[r][c] = PlayerWall(player);
-                self.board[nr][nc] = PlayerHead(player);
-            }
+    fn board_set(&mut self, position: Position, tile: Tile) {
+        match position {
+            (r, c) => self.board[r][c] = tile
         }
+    }
+
+    fn move_to(&mut self, player: PlayerIndex, position: Position) {
+        self.board_set(self.players[player].position, PlayerWall(player));
+        self.board_set(position, PlayerHead(player));
         self.players[player].position = position;
     }
 
@@ -174,13 +177,15 @@ impl GameState {
         let current = self.current_player();
         let cur_direction = self.players[current].direction;
         let action = behaviours[current].act(self);
-        let direction = action.apply_to(cur_direction);
-        self.players[current].direction = direction;
-        let new_position = direction.apply_to(self.players[current].position);
+        let new_direction = action.apply_to(cur_direction);
+        self.players[current].direction = new_direction;
+        let cur_position = self.players[current].position;
+        let new_position = new_direction.apply_to(cur_position);
 
         if self.can_move_to(new_position) {
-            self.move_to(current, new_position)
+            self.move_to(current, new_position);
         } else {
+            self.board_set(cur_position, Crash);
             self.players[current].is_alive = false;
             self.alive_count -= 1;
         }

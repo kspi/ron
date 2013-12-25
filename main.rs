@@ -40,6 +40,7 @@ fn main() {
                 print(match *tile {
                     PlayerHead(p) => direction_char(g.players[p].direction),
                     PlayerWall(x) => format!("{:u}", x),
+                    Crash => ~"X",
                     Empty => ~"."
                 })
             }
