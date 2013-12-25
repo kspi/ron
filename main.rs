@@ -1,5 +1,6 @@
 #[feature(globs)];
 
+extern mod extra;
 extern mod ncurses;
 
 use ncurses::*;
@@ -65,13 +66,14 @@ impl PlayerBehaviour for KeyboardControlled {
 }
 
 fn main() {
-    let mut g = GameState::new(80, 30, ~[
-        Player { name: ~"Player 1", position: (15, 30), direction: North, is_alive: true },
-        Player { name: ~"Player 2", position: (15, 50), direction: South, is_alive: true }
+    let mut g = GameState::new(40, 20, ~[
+        Player { name: ~"Player 1", position: (10, 12), direction: North, is_alive: true },
+        Player { name: ~"Player 2", position: (10, 28), direction: South, is_alive: true }
     ]);
 
     let mut behaviours = ~[
-        KeyboardControlled::new(None),
+        //KeyboardControlled::new(None),
+        Minimax::new(),
         Minimax::new()
     ];
 
@@ -102,7 +104,7 @@ fn main() {
             }
         }
 
-        behaviours[0] = KeyboardControlled::new(key_dir);
+        //behaviours[0] = KeyboardControlled::new(key_dir);
 
         g.do_turn(behaviours);
 
@@ -127,4 +129,6 @@ fn main() {
     getch();
 
     endwin();
+
+    print(format!("Turn: {}, status: {}\n", g.turn, g.status.to_str()));
 }

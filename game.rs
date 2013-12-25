@@ -1,6 +1,6 @@
 use std::vec;
 
-type Position = (int, int);
+pub type Position = (int, int);
 
 #[deriving(Eq, ToStr, Clone)]
 pub enum Direction {
