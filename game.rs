@@ -29,7 +29,7 @@ impl Direction {
         }
     }
 
-    fn apply_to(&self, position: Position) -> Position {
+    pub fn apply_to(&self, position: Position) -> Position {
         match position {
             (r, c) => match *self {
                 North => (r - 1, c),
@@ -157,7 +157,7 @@ impl GameState {
         self.players[player].position = position;
     }
 
-    fn can_move_to(&self, position: Position) -> bool {
+    pub fn can_move_to(&self, position: Position) -> bool {
         match position {
             (row, column) => {
                 0 <= row &&
@@ -169,7 +169,7 @@ impl GameState {
         }
     }
 
-    fn player_after(&self, current: PlayerIndex) -> PlayerIndex {
+    pub fn player_after(&self, current: PlayerIndex) -> PlayerIndex {
         assert!(self.alive_count >= 1);
         let mut cur = (current + 1) % self.players.len();
         while !self.players[cur].is_alive {
