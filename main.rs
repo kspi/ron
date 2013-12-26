@@ -71,7 +71,7 @@ fn key_direction(key: i32) -> Option<Direction> {
 }
 
 fn main() {
-    let mut g = GameState::new(40, 20, ~[
+    let mut game = GameState::new(40, 20, ~[
         Player { name: ~"Player 1", position: (10, 12), direction: North, is_alive: true },
         Player { name: ~"Player 2", position: (10, 28), direction: South, is_alive: true }
     ]);
@@ -109,7 +109,7 @@ fn main() {
     let mut timer = Timer::new().unwrap();
     let sleeper = timer.periodic(100);
 
-    while !g.status.is_over() {
+    while !game.status.is_over() {
         getch_each(|key| {
             if key == 113 { // q
                 endwin();
@@ -122,32 +122,34 @@ fn main() {
             }
         });
 
-        g.do_turn(behaviours);
+        game.do_turn(behaviours);
 
-        move(0, 0);
-        for row in g.board.iter() {
-            for tile in row.iter() {
-                match *tile {
-                    PlayerHead(p) => {
-                        attron(A_BOLD());
-                        attron(COLOR_PAIR(p as i16 + 1));
-                        printw(direction_char(g.players[p].direction));
-                        attroff(COLOR_PAIR(p as i16 + 1));
-                        attroff(A_BOLD());
+        if game.status.is_over() || game.status == PlayerTurn(0) {
+            move(0, 0);
+            for row in game.board.iter() {
+                for tile in row.iter() {
+                    match *tile {
+                        PlayerHead(p) => {
+                            attron(A_BOLD());
+                            attron(COLOR_PAIR(p as i16 + 1));
+                            printw(direction_char(game.players[p].direction));
+                            attroff(COLOR_PAIR(p as i16 + 1));
+                            attroff(A_BOLD());
+                        }
+                        PlayerWall(x) => {
+                            attron(COLOR_PAIR(x as i16 + 1));
+                            printw("#");
+                            attroff(COLOR_PAIR(x as i16 + 1));
+                        }
+                        Crash => { printw("X"); }
+                        Empty => { printw("."); }
                     }
-                    PlayerWall(x) => {
-                        attron(COLOR_PAIR(x as i16 + 1));
-                        printw("#");
-                        attroff(COLOR_PAIR(x as i16 + 1));
-                    }
-                    Crash => { printw("X"); }
-                    Empty => { printw("."); }
                 }
+                printw("\n");
             }
-            printw("\n");
+            printw(format!("Turn: {}, status: {}\n", game.turn, game.status.to_str()));
+            refresh();
         }
-        printw(format!("Turn: {}, status: {}\n", g.turn, g.status.to_str()));
-        refresh();
         sleeper.recv();
     }
 
@@ -157,5 +159,5 @@ fn main() {
 
     endwin();
 
-    print(format!("Turn: {}, status: {}\n", g.turn, g.status.to_str()));
+    print(format!("Turn: {}, status: {}\n", game.turn, game.status.to_str()));
 }

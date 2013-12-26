@@ -53,7 +53,7 @@ impl Direction {
     }
 }
 
-#[deriving(ToStr, Clone)]
+#[deriving(Eq, ToStr, Clone)]
 pub enum Action {
     MoveForward,
     TurnLeft,
@@ -72,7 +72,7 @@ impl Action {
 
 pub type PlayerIndex = uint;
 
-#[deriving(ToStr, Clone)]
+#[deriving(Eq, ToStr, Clone)]
 pub struct Player {
     name: ~str,
     position: Position,
@@ -84,7 +84,7 @@ pub trait PlayerBehaviour {
     fn act(&mut self, &GameState) -> Action;
 }
 
-#[deriving(ToStr, Clone)]
+#[deriving(Eq, ToStr, Clone)]
 pub enum Tile {
     Empty,
     PlayerWall(PlayerIndex),
@@ -101,7 +101,7 @@ impl Tile {
     }
 }
 
-#[deriving(ToStr, Clone)]
+#[deriving(Eq, ToStr, Clone)]
 pub enum GameStatus {
     PlayerTurn(PlayerIndex),
     Won(PlayerIndex)
