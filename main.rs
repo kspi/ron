@@ -25,6 +25,37 @@ fn direction_char(direction: Direction) -> ~str {
     }
 }
 
+pub struct KeyboardControlled {
+    port: Port<Direction>
+}
+
+impl KeyboardControlled {
+    pub fn new(port: Port<Direction>) -> ~PlayerBehaviour {
+        ~KeyboardControlled {
+            port: port
+        } as ~PlayerBehaviour
+    }
+}
+
+impl PlayerBehaviour for KeyboardControlled {
+    fn act(&mut self, game: &GameState) -> Action {
+        match self.port.try_recv() {
+            None => MoveForward,
+            Some(direction) => (game.players[game.current_player()]
+                                .direction.action_for(direction)
+                                .unwrap_or(MoveForward))
+        }
+    }
+}
+
+fn getch_each(f: |i32|) {
+    let mut key = getch();
+    while key != ERR {
+        f(key);
+        key = getch();
+    }
+}
+
 fn key_direction(key: i32) -> Option<Direction> {
     match key {
         KEY_UP => Some(North),
@@ -37,33 +68,6 @@ fn key_direction(key: i32) -> Option<Direction> {
         104 => Some(West), // h
         _ => None
     }
-
-}
-
-#[deriving(ToStr)]
-pub struct KeyboardControlled {
-    maybe_direction: Option<Direction>
-}
-
-impl KeyboardControlled {
-    pub fn new(d: Option<Direction>) -> ~PlayerBehaviour {
-        ~KeyboardControlled {
-            maybe_direction: d
-        } as ~PlayerBehaviour
-    }
-}
-
-impl PlayerBehaviour for KeyboardControlled {
-    fn act(&mut self, game: &GameState) -> Action {
-        match self.maybe_direction {
-            None => MoveForward,
-            Some(direction) => {
-                (game.players[game.current_player()]
-                                .direction.action_for(direction)
-                                .unwrap_or(MoveForward))
-            }
-        }
-    }
 }
 
 fn main() {
@@ -72,14 +76,24 @@ fn main() {
         Player { name: ~"Player 2", position: (10, 28), direction: South, is_alive: true }
     ]);
 
-    let mut behaviours = ~[
-        Minimax::new(),
-        Minimax::new()
-    ];
-
     let all_args = os::args();
     let options = all_args.slice(0, all_args.len());
     let keyboard_control = options.iter().any(|x| *x == ~"-k" || *x == ~"--keyword");
+
+    let (dir_port, dir_chan) = Chan::new();
+
+    let mut behaviours = if keyboard_control {
+        ~[
+            KeyboardControlled::new(dir_port),
+            Minimax::new()
+        ]
+    } else {
+        ~[
+            Minimax::new(),
+            Minimax::new()
+        ]
+    };
+
 
     // Curses init.
     initscr();
@@ -92,32 +106,25 @@ fn main() {
     init_pair(1, COLOR_RED, COLOR_BLACK);
     init_pair(2, COLOR_CYAN, COLOR_BLACK);
 
-    let mut key_dir: Option<Direction> = None;
-
     let mut timer = Timer::new().unwrap();
     let sleeper = timer.periodic(100);
 
     while !g.status.is_over() {
-        move(0, 0);
-
-        {
-            let mut key = getch();
-            while key != ERR {
-                if key == 113 { // q
-                    endwin();
-                    return;
-                }
-                key_direction(key).map(|dir| { key_dir = Some(dir); });
-                key = getch();
+        getch_each(|key| {
+            if key == 113 { // q
+                endwin();
+                return;
             }
-        }
-
-        if (keyboard_control) {
-            behaviours[0] = KeyboardControlled::new(key_dir);
-        }
+            if (keyboard_control) {
+                key_direction(key).map(|dir| {
+                    dir_chan.send(dir);
+                });
+            }
+        });
 
         g.do_turn(behaviours);
 
+        move(0, 0);
         for row in g.board.iter() {
             for tile in row.iter() {
                 match *tile {
