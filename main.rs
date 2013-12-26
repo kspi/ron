@@ -109,11 +109,11 @@ fn main() {
     let mut timer = Timer::new().unwrap();
     let sleeper = timer.periodic(100);
 
-    while !game.status.is_over() {
+    let mut quit = false;
+    while !game.status.is_over() && !quit {
         getch_each(|key| {
             if key == 113 { // q
-                endwin();
-                return;
+                quit = true;
             }
             if (keyboard_control) {
                 key_direction(key).map(|dir| {
