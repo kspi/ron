@@ -63,6 +63,8 @@ fn position_distance(a: Position, b: Position) -> int {
     max((ar - br).abs(), (ac - bc).abs())
 }
 
+static ACTIONS: [Action, ..3] = [MoveForward, TurnLeft, TurnRight];
+
 fn minimax(player: PlayerIndex, game: &GameState, depth: uint, minimize: bool, start_time: u64) -> f64 {
     if game.status.is_over() {
         if game.winner() == player {
@@ -80,8 +82,7 @@ fn minimax(player: PlayerIndex, game: &GameState, depth: uint, minimize: bool, s
     }
     let init = if minimize { f64::INFINITY } else { -f64::INFINITY };
     let foldfn = if minimize { min } else { max };
-    let actions = ~[MoveForward, TurnLeft, TurnRight];
-    actions.iter().map(|action| {
+    ACTIONS.iter().map(|action| {
         let new_game = game_apply_action(game, *action);
         minimax(player, new_game, depth + 1, !minimize, start_time)
     }).fold(init, foldfn)
@@ -91,15 +92,7 @@ impl PlayerBehaviour for Minimax {
     fn act(&mut self, game: &GameState) -> Action {
         let player_index = game.current_player();
 
-        let actions = if random_bernoulli(0.60) {
-            ~[MoveForward, TurnLeft, TurnRight]
-        } else if random_bernoulli(0.5) {
-            ~[TurnLeft, TurnRight, MoveForward]
-        } else {
-            ~[TurnRight, TurnLeft, MoveForward]
-        };
-
-        let best_action = *actions.iter().max_by(|action| {
+        let best_action = *ACTIONS.iter().max_by(|action| {
             let new_game = game_apply_action(game, **action);
             minimax(player_index, new_game, 0, true, precise_time_ns())
         }).unwrap();
