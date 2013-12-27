@@ -50,10 +50,13 @@ fn game_apply_action(game: &GameState, action: Action) -> ~GameState {
 }
 
 fn explore_probability(depth: uint, falloff: f64) -> f64 {
-    if depth <= 1 {
+    let d = depth as f64;
+    if d <= falloff {
         1.0
     } else {
-        1.0 - 1.0 / (1.0 + f64::exp(-(depth as f64 - falloff) / falloff))
+        1.0 - 1.0 / (1.0
+                     + f64::exp(falloff * 2.0
+                                - f64::pow(d, 1.0/1.1)))
     }
 }
 
@@ -68,17 +71,25 @@ static ACTIONS: [Action, ..3] = [MoveForward, TurnLeft, TurnRight];
 fn minimax(player: PlayerIndex, game: &GameState, depth: uint, minimize: bool, start_time: u64) -> f64 {
     if game.status.is_over() {
         if game.winner() == player {
-            return 1e6 + 1e6 / game.turn as f64;
+            return f64::INFINITY;
         } else {
-            return -1e6 - 1e6 / game.turn as f64;
+            return -f64::INFINITY;
         }
     }
     let time_progress = ((precise_time_ns() - start_time) as f64) / (TARGET_ACT_TIME as f64);
-    if time_progress > 1.0 || !random_bernoulli(explore_probability(depth, (1.0 - time_progress) * 20.0)) {
+    if time_progress > 0.9 || !random_bernoulli(explore_probability(depth, (1.0 - time_progress) * 9.0)) {
         let our_pos = game.players[player].position;
         let other_player = game.player_after(player);
         let their_pos = game.players[other_player].position;
-        return 1e3 / position_distance(our_pos, their_pos) as f64 + (flood_count(our_pos, game) as f64) - (flood_count(their_pos, game) as f64);
+        let our_space = flood_count(our_pos, game) as f64;
+        let their_space = flood_count(their_pos, game) as f64;
+        if (our_space > their_space) {
+            return 100.0 * our_space;
+        } else if (our_space < their_space) {
+            return -1000.0 / our_space;
+        } else {
+            return our_space / position_distance(our_pos, their_pos) as f64;
+        }
     }
     let init = if minimize { f64::INFINITY } else { -f64::INFINITY };
     let foldfn = if minimize { min } else { max };
