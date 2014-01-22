@@ -7,7 +7,9 @@ use ncurses::*;
 use game::*;
 use behaviour::minimax::Minimax;
 use std::io::Timer;
+use std::io::stdio::print;
 use std::os;
+use std::comm::Data;
 
 mod game;
 mod behaviour {
@@ -40,10 +42,10 @@ impl KeyboardControlled {
 impl PlayerBehaviour for KeyboardControlled {
     fn act(&mut self, game: &GameState) -> Action {
         match self.port.try_recv() {
-            None => MoveForward,
-            Some(direction) => (game.players[game.current_player()]
+            Data(direction) => (game.players[game.current_player()]
                                 .direction.action_for(direction)
-                                .unwrap_or(MoveForward))
+                                .unwrap_or(MoveForward)),
+            _ => MoveForward
         }
     }
 }
