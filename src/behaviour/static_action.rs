@@ -1,15 +1,16 @@
-use game::*;
+use game::{Action, GameState, PlayerBehaviour};
+use std::owned::Box;
 
-#[deriving(ToStr)]
+#[deriving(Show)]
 pub struct StaticAction {
     action: Action
 }
 
 impl StaticAction {
-    pub fn new(action: Action) -> ~PlayerBehaviour {
-        ~StaticAction {
+    pub fn new(action: Action) -> Box<PlayerBehaviour> {
+        box StaticAction {
             action: action
-        } as ~PlayerBehaviour
+        } as Box<PlayerBehaviour>
     }
 }
 
