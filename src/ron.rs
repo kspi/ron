@@ -5,7 +5,6 @@ use behaviour::minimax::Minimax;
 use game::{Direction, North, East, South, West};
 use game::{Action, MoveForward};
 use game::{GameState, Player, PlayerBehaviour, PlayerTurn, PlayerHead, PlayerWall, Crash, Empty};
-use std::string::String;
 use std::owned::Box;
 use std::io::Timer;
 use std::io::stdio::print;
@@ -19,13 +18,12 @@ pub mod behaviour {
     pub mod minimax;
 }
 
-// TODO: Static strings?
-fn direction_char(direction: Direction) -> String {
+fn direction_char(direction: Direction) -> &str {
     match direction {
-        North => "^".to_string(),
-        East => ">".to_string(),
-        South => "v".to_string(),
-        West => "<".to_string()
+        North => "^",
+        East => ">",
+        South => "v",
+        West => "<"
     }
 }
 
