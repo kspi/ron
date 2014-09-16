@@ -1,3 +1,5 @@
+#![feature(phase)]
+#[phase(plugin, link)] extern crate log;
 extern crate ncurses;
 extern crate time;
 
@@ -82,7 +84,7 @@ fn main() {
 
     let all_args = os::args();
     let options = all_args.slice(0, all_args.len());
-    let keyboard_control = options.iter().any(|x| *x == "-k".to_string() || *x == "--keyword".to_string());
+    let keyboard_control = options.iter().any(|x| *x == "-k".to_string() );
 
     let (sender, receiver) = channel();
 
@@ -126,6 +128,7 @@ fn main() {
             }
         });
 
+        debug!("Turn {}, player {}", game.turn, game.current_player())
         game.do_turn(behaviours.as_mut_slice());
 
         if game.status.is_over() || game.status == PlayerTurn(0) {

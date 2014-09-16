@@ -6,6 +6,8 @@ use behaviour::static_action::StaticAction;
 use std::vec::Vec;
 use std::owned::Box;
 use std::cmp::max;
+use std::rand::random;
+use time::precise_time_ns;
 
 fn flood_count(position: Position, game: &GameState) -> uint {
     let mut flooded = Vec::from_elem(game.board_height, Vec::from_elem(game.board_width, false));
@@ -80,7 +82,14 @@ struct GameNode {
 
 static ACTIONS: [Action, ..3] = [MoveForward, TurnLeft, TurnRight];
 
-fn explore_tree(game: &GameState, tree: &mut Vec<GameNode>, depth: uint) {
+static TARGET_ACT_TIME : u64 = 50000000;
+
+fn random_bernoulli(p: f64) -> bool {
+    let x: f64 = random();
+    x < p
+}
+
+fn explore_tree(game: &GameState, tree: &mut Vec<GameNode>, start_time: u64, depth: uint) {
     if game.is_over() {
         return;
     }
@@ -91,10 +100,13 @@ fn explore_tree(game: &GameState, tree: &mut Vec<GameNode>, depth: uint) {
         }).collect();
     }
 
-    if depth > 0 {
+    let time_progress = ((precise_time_ns() - start_time) as f64) / (TARGET_ACT_TIME as f64);
+    if time_progress < 1.0 && random_bernoulli(1.3f64.powf(-time_progress * (depth as f64))) {
         for node in tree.mut_iter() {
-            explore_tree(&node.game, &mut node.children, depth - 1);
+            explore_tree(&node.game, &mut node.children, start_time, depth + 1);
         }
+    } else {
+        debug!("Stopping exploration at depth {}", depth);
     }
 }
 
@@ -139,7 +151,8 @@ impl PlayerBehaviour for MinimaxMemory {
             };
         }
 
-        explore_tree(game, &mut self.tree, 3);
+        let start_time = precise_time_ns();
+        explore_tree(game, &mut self.tree, start_time, 0);
 
         let tree = self.tree.clone();
         let best_node = tree.iter().fold(&tree[0], |a, b|
