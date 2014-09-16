@@ -1,12 +1,13 @@
 extern crate ncurses;
 extern crate time;
 
-use behaviour::minimax::Minimax;
+use behaviour::minimax_memory::MinimaxMemory;
 use game::{Direction, North, East, South, West};
 use game::{Action, MoveForward};
 use game::{GameState, Player, PlayerBehaviour, PlayerTurn, PlayerHead, PlayerWall, Crash, Empty};
 use std::owned::Box;
 use std::io::Timer;
+use std::time::Duration;
 use std::io::stdio::print;
 use std::os;
 use std::comm::{channel, Receiver};
@@ -16,9 +17,10 @@ pub mod behaviour {
     pub mod static_action;
     pub mod stupid_random;
     pub mod minimax;
+    pub mod minimax_memory;
 }
 
-fn direction_char(direction: Direction) -> &str {
+fn direction_str(direction: Direction) -> &'static str {
     match direction {
         North => "^",
         East => ">",
@@ -42,7 +44,7 @@ impl KeyboardControlled {
 impl PlayerBehaviour for KeyboardControlled {
     fn act(&mut self, game: &GameState) -> Action {
         match self.port.try_recv() {
-            Ok(direction) => (game.players.get(game.current_player())
+            Ok(direction) => (game.players[game.current_player()]
                               .direction.action_for(direction)
                               .unwrap_or(MoveForward)),
             _ => MoveForward
@@ -87,12 +89,12 @@ fn main() {
     let mut behaviours = if keyboard_control {
         vec!(
             KeyboardControlled::new(receiver),
-            Minimax::new()
+            MinimaxMemory::new()
         )
     } else {
         vec!(
-            Minimax::new(),
-            Minimax::new()
+            MinimaxMemory::new(),
+            MinimaxMemory::new()
         )
     };
 
@@ -109,7 +111,7 @@ fn main() {
     ncurses::init_pair(2, ncurses::COLOR_CYAN, ncurses::COLOR_BLACK);
 
     let mut timer = Timer::new().unwrap();
-    let sleeper = timer.periodic(100);
+    let sleeper = timer.periodic(Duration::milliseconds(100));
 
     let mut quit = false;
     while !game.status.is_over() && !quit {
@@ -134,7 +136,7 @@ fn main() {
                         PlayerHead(p) => {
                             ncurses::attron(ncurses::A_BOLD());
                             ncurses::attron(ncurses::COLOR_PAIR(p as i16 + 1));
-                            ncurses::printw(direction_char(game.players.get(p).direction).as_slice());
+                            ncurses::printw(direction_str(game.players[p].direction));
                             ncurses::attroff(ncurses::COLOR_PAIR(p as i16 + 1));
                             ncurses::attroff(ncurses::A_BOLD());
                         }
@@ -149,7 +151,7 @@ fn main() {
                 }
                 ncurses::printw("\n");
             }
-            ncurses::printw(format!("Turn: {}, status: {}\n", game.turn, game.status.to_str()).as_slice());
+            ncurses::printw(format!("Turn: {}, status: {}\n", game.turn, game.status).as_slice());
             ncurses::refresh();
         }
         sleeper.recv();
@@ -161,5 +163,5 @@ fn main() {
 
     ncurses::endwin();
 
-    print(format!("Turn: {}, status: {}\n", game.turn, game.status.to_str()).as_slice());
+    print(format!("Turn: {}, status: {}\n", game.turn, game.status).as_slice());
 }

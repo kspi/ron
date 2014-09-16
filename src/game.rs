@@ -82,7 +82,7 @@ pub struct Player {
     pub is_alive: bool
 }
 
-pub trait PlayerBehaviour {
+pub trait PlayerBehaviour : 'static {
     fn act(&mut self, &GameState) -> Action;
 }
 
@@ -118,7 +118,7 @@ impl GameStatus {
     }
 }
 
-#[deriving(Clone, Show)]
+#[deriving(Clone, Show, PartialEq, Eq)]
 pub struct GameState {
     pub turn: uint,
     pub players: Vec<Player>,
@@ -142,7 +142,7 @@ impl GameState {
         };
         // Place initial walls.
         for i in range(0, s.alive_count) {
-            let pos = s.players.get(i).position;
+            let pos = s.players[i].position;
             s.board_set(pos, PlayerHead(i))
         };
         s
@@ -155,7 +155,7 @@ impl GameState {
     }
 
     fn move_to(&mut self, player: PlayerIndex, position: Position) {
-        let old_pos = self.players.get(player).position;
+        let old_pos = self.players[player].position;
         self.board_set(old_pos, PlayerWall(player));
         self.board_set(position, PlayerHead(player));
         self.players.get_mut(player).position = position;
@@ -166,7 +166,7 @@ impl GameState {
             (row, column) => {
                 row < self.board_height &&
                 column < self.board_width &&
-                self.board.get(row).get(column).is_passable()
+                self.board[row][column].is_passable()
             }
         }
     }
@@ -174,10 +174,17 @@ impl GameState {
     pub fn player_after(&self, current: PlayerIndex) -> PlayerIndex {
         assert!(self.alive_count >= 1);
         let mut cur = (current + 1) % self.players.len();
-        while !self.players.get(cur).is_alive {
+        while !self.players[cur].is_alive {
             cur = (cur + 1) % self.players.len();
         }
         cur
+    }
+
+    pub fn is_over(&self) -> bool {
+        match self.status {
+            PlayerTurn(_) => false,
+            _ => true
+        }
     }
 
     pub fn current_player(&self) -> PlayerIndex {
@@ -196,11 +203,11 @@ impl GameState {
 
     pub fn do_turn(&mut self, behaviours: &mut [Box<PlayerBehaviour>]) {
         let current = self.current_player();
-        let cur_direction = self.players.get(current).direction;
+        let cur_direction = self.players[current].direction;
         let action = behaviours[current].act(self);
         let new_direction = action.apply_to(cur_direction);
         self.players.get_mut(current).direction = new_direction;
-        let cur_position = self.players.get(current).position;
+        let cur_position = self.players[current].position;
         let new_position = new_direction.apply_to(cur_position);
 
         if self.can_move_to(new_position) {

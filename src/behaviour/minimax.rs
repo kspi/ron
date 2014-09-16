@@ -24,7 +24,7 @@ fn flood_count(position: Position, game: &GameState) -> uint {
     let mut count = 0u;
     fn fill(pos: Position, game: &GameState, flooded: &mut Vec<Vec<bool>>, count: &mut uint) {
         let (r, c) = pos;
-        if game.can_move_to(pos) && !flooded.get(r).get(c) {
+        if game.can_move_to(pos) && !(*flooded)[r][c] {
             flooded.get_mut(r).grow_set(c, &false, true);
             *count += 1;
             fill(North.apply_to(pos), game, flooded, count);
@@ -45,11 +45,11 @@ fn random_bernoulli(p: f64) -> bool {
     x < p
 }
 
-fn game_apply_action(game: &GameState, action: Action) -> Box<GameState> {
+fn game_apply_action(game: &GameState, action: Action) -> GameState {
     let mut new_game = game.clone();
     let mut behaviours = Vec::from_fn(game.players.len(), |_| StaticAction::new(action));
     new_game.do_turn(behaviours.as_mut_slice());
-    box new_game
+    new_game
 }
 
 fn explore_probability(depth: uint, falloff: f64) -> f64 {
@@ -80,9 +80,9 @@ fn minimax(player: PlayerIndex, game: &GameState, depth: uint, minimize: bool, s
     }
     let time_progress = ((precise_time_ns() - start_time) as f64) / (TARGET_ACT_TIME as f64);
     if time_progress > 0.9 || !random_bernoulli(explore_probability(depth, (1.0 - time_progress) * 9.0)) {
-        let our_pos = game.players.get(player).position;
+        let our_pos = game.players[player].position;
         let other_player = game.player_after(player);
-        let their_pos = game.players.get(other_player).position;
+        let their_pos = game.players[other_player].position;
         let our_space = flood_count(our_pos, game) as f64;
         let their_space = flood_count(their_pos, game) as f64;
         if our_space > their_space {
@@ -101,7 +101,7 @@ fn minimax(player: PlayerIndex, game: &GameState, depth: uint, minimize: bool, s
     };
     ACTIONS.iter().map(|action| {
         let new_game = game_apply_action(game, *action);
-        minimax(player, new_game, depth + 1, !minimize, start_time)
+        minimax(player, &new_game, depth + 1, !minimize, start_time)
     }).fold(init, foldfn)
 }
 
@@ -111,7 +111,7 @@ impl PlayerBehaviour for Minimax {
 
         let (best_action, _) = ACTIONS.iter().map(|action| {
             let new_game = game_apply_action(game, *action);
-            let score = minimax(player_index, new_game, 0, true, precise_time_ns());
+            let score = minimax(player_index, &new_game, 0, true, precise_time_ns());
             (*action, score)
         }).fold((MoveForward, -f64::INFINITY), |(xa, xs), (ya, ys)|
             if xs > ys {

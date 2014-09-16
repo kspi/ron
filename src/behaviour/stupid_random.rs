@@ -33,7 +33,7 @@ fn random_turn() -> Action {
 impl PlayerBehaviour for StupidRandom {
     fn act(&mut self, game: &GameState) -> Action {
         let player_index = game.current_player();
-        let player = &game.players.get(player_index);
+        let player = &game.players[player_index];
         let forward_pos = player.direction.apply_to(player.position);
         let left_pos = player.direction.left().apply_to(player.position);
         let right_pos = player.direction.right().apply_to(player.position);
