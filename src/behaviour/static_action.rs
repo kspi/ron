@@ -1,4 +1,4 @@
-use game::{Action, GameState, PlayerBehaviour};
+use game::{Action, GameState, Behaviour};
 use std::owned::Box;
 
 #[deriving(Show)]
@@ -7,14 +7,14 @@ pub struct StaticAction {
 }
 
 impl StaticAction {
-    pub fn new(action: Action) -> Box<PlayerBehaviour> {
+    pub fn new(action: Action) -> Box<Behaviour> {
         box StaticAction {
             action: action
-        } as Box<PlayerBehaviour>
+        } as Box<Behaviour>
     }
 }
 
-impl PlayerBehaviour for StaticAction {
+impl Behaviour for StaticAction {
     fn act(&mut self, _: &GameState) -> Action {
         self.action
     }

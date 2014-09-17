@@ -1,4 +1,4 @@
-use game::{Action, MoveForward, TurnLeft, TurnRight, PlayerBehaviour, GameState, Position, PlayerIndex};
+use game::{Action, MoveForward, TurnLeft, TurnRight, Behaviour, GameState, Position, PlayerIndex};
 use game::{North, East, South, West};
 use behaviour::static_action::StaticAction;
 use std::f64;
@@ -14,8 +14,8 @@ pub struct Minimax;
 static TARGET_ACT_TIME : u64 = 50000000;
 
 impl Minimax {
-    pub fn new() -> Box<PlayerBehaviour> {
-        box Minimax as Box<PlayerBehaviour>
+    pub fn new() -> Box<Behaviour> {
+        box Minimax as Box<Behaviour>
     }
 }
 
@@ -105,7 +105,7 @@ fn minimax(player: PlayerIndex, game: &GameState, depth: uint, minimize: bool, s
     }).fold(init, foldfn)
 }
 
-impl PlayerBehaviour for Minimax {
+impl Behaviour for Minimax {
     fn act(&mut self, game: &GameState) -> Action {
         let player_index = game.current_player();
 

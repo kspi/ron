@@ -1,6 +1,6 @@
 extern crate ncurses;
 
-use game::{Action, MoveForward, TurnLeft, TurnRight, PlayerBehaviour, GameState, Position, PlayerIndex};
+use game::{Action, MoveForward, TurnLeft, TurnRight, Behaviour, GameState, Position, PlayerIndex};
 use game::{North, East, South, West};
 use behaviour::static_action::StaticAction;
 use std::vec::Vec;
@@ -132,15 +132,15 @@ pub struct MinimaxMemory {
 }
 
 impl MinimaxMemory {
-    pub fn new() -> Box<PlayerBehaviour> {
+    pub fn new() -> Box<Behaviour> {
         box MinimaxMemory { 
             tree: vec!(),
             chosen_tree: vec!()
-        } as Box<PlayerBehaviour>
+        } as Box<Behaviour>
     }
 }
 
-impl PlayerBehaviour for MinimaxMemory {
+impl Behaviour for MinimaxMemory {
     fn act(&mut self, game: &GameState) -> Action {
         if !self.chosen_tree.is_empty() {
             for node in self.chosen_tree.iter() {

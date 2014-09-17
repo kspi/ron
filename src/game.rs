@@ -82,8 +82,25 @@ pub struct Player {
     pub is_alive: bool
 }
 
-pub trait PlayerBehaviour : 'static {
-    fn act(&mut self, &GameState) -> Action;
+pub struct Behaviour {
+    sender: Sender<GameState>,
+    pub receiver: Receiver<(uint, Action)>
+}
+
+impl Behaviour {
+    pub fn make() -> (Receiver<GameState>, Sender<(uint, Action)>, Behaviour) {
+        let (state_sender, state_receiver) = channel::<GameState>();
+        let (action_sender, action_receiver) = channel::<(uint, Action)>();
+        let behaviour = Behaviour {
+            sender: state_sender,
+            receiver: action_receiver
+        };
+        (state_receiver, action_sender, behaviour)
+    }
+
+    pub fn send_state(&self, game: &GameState) {
+        self.sender.send(game.clone());
+    }
 }
 
 #[deriving(PartialEq, Eq, Show, Clone)]
@@ -201,10 +218,9 @@ impl GameState {
         }
     }
 
-    pub fn do_turn(&mut self, behaviours: &mut [Box<PlayerBehaviour>]) {
+    pub fn do_turn(&mut self, action: Action) {
         let current = self.current_player();
         let cur_direction = self.players[current].direction;
-        let action = behaviours[current].act(self);
         let new_direction = action.apply_to(cur_direction);
         self.players.get_mut(current).direction = new_direction;
         let cur_position = self.players[current].position;

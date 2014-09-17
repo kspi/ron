@@ -3,24 +3,25 @@
 extern crate ncurses;
 extern crate time;
 
-use behaviour::minimax_memory::MinimaxMemory;
 use game::{Direction, North, East, South, West};
 use game::{Action, MoveForward};
-use game::{GameState, Player, PlayerBehaviour, PlayerTurn, PlayerHead, PlayerWall, Crash, Empty};
+use game::{GameState, Player, Behaviour, PlayerTurn, PlayerHead, PlayerWall, Crash, Empty};
 use std::owned::Box;
 use std::io::Timer;
 use std::time::Duration;
 use std::io::stdio::print;
 use std::os;
-use std::comm::{channel, Receiver};
+use std::comm::{channel, Receiver, Select};
 
 pub mod game;
 pub mod behaviour {
-    pub mod static_action;
+//    pub mod static_action;
     pub mod stupid_random;
-    pub mod minimax;
-    pub mod minimax_memory;
+//    pub mod minimax;
+//    pub mod minimax_memory;
 }
+
+static FRAME_DELAY_MS: i64 = 1000;
 
 fn direction_str(direction: Direction) -> &'static str {
     match direction {
@@ -31,27 +32,30 @@ fn direction_str(direction: Direction) -> &'static str {
     }
 }
 
-pub struct KeyboardControlled {
-    port: Receiver<Direction>
-}
-
-impl KeyboardControlled {
-    pub fn new(port: Receiver<Direction>) -> Box<PlayerBehaviour> {
-        box KeyboardControlled {
-            port: port
-        } as Box<PlayerBehaviour>
-    }
-}
-
-impl PlayerBehaviour for KeyboardControlled {
-    fn act(&mut self, game: &GameState) -> Action {
-        match self.port.try_recv() {
-            Ok(direction) => (game.players[game.current_player()]
-                              .direction.action_for(direction)
-                              .unwrap_or(MoveForward)),
-            _ => MoveForward
+fn keyboard_controlled(direction_receiver: Receiver<Direction>) -> Behaviour {
+    let (state_receiver, action_sender, behaviour) = Behaviour::make();
+    spawn(proc() {
+        loop {
+            let game = state_receiver.recv();
+            if game.is_over() {
+                debug!("Game is over, quitting.");
+                break;
+            };
+            
+            let mut timer = Timer::new().unwrap();
+            let timeout = timer.oneshot(Duration::milliseconds(FRAME_DELAY_MS - 20));
+            let action = select! {
+                direction = direction_receiver.recv() =>
+                    (game.players[game.current_player()]
+                     .direction.action_for(direction)
+                     .unwrap_or(MoveForward)),
+                () = timeout.recv() => MoveForward
+            };
+            debug!("Sending action {}", action);
+            action_sender.send((game.turn, action));
         }
-    }
+    });
+    behaviour
 }
 
 fn getch_each(f: |i32|) {
@@ -77,29 +81,28 @@ fn key_direction(key: i32) -> Option<Direction> {
 }
 
 fn main() {
-    let mut game = GameState::new(40, 20, vec!(
+    let mut game = GameState::new(40, 20, vec![
         Player { name: "Player 1".to_string(), position: (10, 12), direction: North, is_alive: true },
         Player { name: "Player 2".to_string(), position: (10, 28), direction: South, is_alive: true }
-    ));
+    ]);
 
     let all_args = os::args();
     let options = all_args.slice(0, all_args.len());
     let keyboard_control = options.iter().any(|x| *x == "-k".to_string() );
 
-    let (sender, receiver) = channel();
+    let (direction_sender, direction_receiver) = channel::<Direction>();
 
-    let mut behaviours = if keyboard_control {
-        vec!(
-            KeyboardControlled::new(receiver),
-            MinimaxMemory::new()
-        )
+    let behaviours = if keyboard_control {
+        vec![
+            keyboard_controlled(direction_receiver),
+            behaviour::stupid_random::stupid_random()
+        ]
     } else {
-        vec!(
-            MinimaxMemory::new(),
-            MinimaxMemory::new()
-        )
+        vec![
+            behaviour::stupid_random::stupid_random(),
+            behaviour::stupid_random::stupid_random()
+        ]
     };
-
 
     // Curses init.
     ncurses::initscr();
@@ -112,8 +115,6 @@ fn main() {
     ncurses::init_pair(1, ncurses::COLOR_RED, ncurses::COLOR_BLACK);
     ncurses::init_pair(2, ncurses::COLOR_CYAN, ncurses::COLOR_BLACK);
 
-    let mut timer = Timer::new().unwrap();
-    let sleeper = timer.periodic(Duration::milliseconds(100));
 
     let mut quit = false;
     while !game.status.is_over() && !quit {
@@ -123,13 +124,47 @@ fn main() {
             }
             if keyboard_control {
                 key_direction(key).map(|dir| {
-                    sender.send(dir);
+                    direction_sender.send(dir);
                 });
             }
         });
 
-        debug!("Turn {}, player {}", game.turn, game.current_player())
-        game.do_turn(behaviours.as_mut_slice());
+        debug!("Turn {}, player {}", game.turn, game.current_player());
+
+        {
+            let ref behaviour = behaviours[game.current_player()];
+            behaviour.send_state(&game);
+            let mut timer = Timer::new().unwrap();
+            let timeout = timer.oneshot(Duration::milliseconds(FRAME_DELAY_MS));
+            let mut action = MoveForward;
+            let mut action_set = false;
+
+            let select = Select::new();
+            let mut timeout_handle  = select.handle(&timeout);
+            let mut behaviour_handle = select.handle(&behaviour.receiver);
+            unsafe {
+                timeout_handle.add();
+                behaviour_handle.add();
+            }
+            loop {
+                let id = select.wait();
+                if id == timeout_handle.id() {
+                    if !action_set {
+                        warn!("Turn {}, player {}: action was not set fast enough.", game.turn, game.current_player());
+                    }
+                    break;
+                } else if id == behaviour_handle.id() {
+                    let (turn, a) = behaviour.receiver.recv();
+                    if (turn == game.turn) {
+                        action = a;
+                        action_set = true;
+                    } else {
+                        warn!("Turn {}: received action for wrong turn {} from player {}.", game.turn, turn, game.current_player());
+                    };
+                };
+            };
+            game.do_turn(action);
+        };
 
         if game.status.is_over() || game.status == PlayerTurn(0) {
             ncurses::move(0, 0);
@@ -157,7 +192,6 @@ fn main() {
             ncurses::printw(format!("Turn: {}, status: {}\n", game.turn, game.status).as_slice());
             ncurses::refresh();
         }
-        sleeper.recv();
     }
 
     ncurses::timeout(-1);
