@@ -1,6 +1,5 @@
 use std::vec::Vec;
 use std::string::String;
-use std::owned::Box;
 
 pub type Position = (uint, uint);
 
@@ -88,14 +87,16 @@ pub struct Behaviour {
 }
 
 impl Behaviour {
-    pub fn make() -> (Receiver<GameState>, Sender<(uint, Action)>, Behaviour) {
+    pub fn make(body: proc (Receiver<GameState>, Sender<(uint, Action)>): Send) -> Behaviour {
         let (state_sender, state_receiver) = channel::<GameState>();
         let (action_sender, action_receiver) = channel::<(uint, Action)>();
-        let behaviour = Behaviour {
+        spawn(proc () {
+            body(state_receiver, action_sender);
+        });
+        Behaviour {
             sender: state_sender,
             receiver: action_receiver
-        };
-        (state_receiver, action_sender, behaviour)
+        }
     }
 
     pub fn send_state(&self, game: &GameState) {

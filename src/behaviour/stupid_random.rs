@@ -1,11 +1,5 @@
 use game::{Action, MoveForward, TurnLeft, TurnRight, Behaviour, GameState};
-use std::owned::Box;
-use std::rand::random;
-
-fn random_bernoulli(p: f64) -> bool {
-    let x: f64 = random();
-    x < p
-}
+use random::random_bernoulli;
 
 fn random_turn() -> Action {
     if random_bernoulli(0.5) {
@@ -15,11 +9,8 @@ fn random_turn() -> Action {
     }
 }
 
-pub fn stupid_random() -> Behaviour {
-    let (state_receiver, action_sender, behaviour) = Behaviour::make();
-
-    spawn(proc() {
-        let mut stability: f64 = 0.0;
+pub fn stupid_random(stability: f64) -> Behaviour {
+    Behaviour::make(proc(state_receiver, action_sender) {
         let mut turns_since_change: uint = 0;
 
         let act = |game: &GameState| {
@@ -58,7 +49,5 @@ pub fn stupid_random() -> Behaviour {
             debug!("Sending action {}", action);
             action_sender.send((game.turn, action));
         }
-    });
-
-    behaviour
+    })
 }

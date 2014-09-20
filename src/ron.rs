@@ -6,7 +6,6 @@ extern crate time;
 use game::{Direction, North, East, South, West};
 use game::{Action, MoveForward};
 use game::{GameState, Player, Behaviour, PlayerTurn, PlayerHead, PlayerWall, Crash, Empty};
-use std::owned::Box;
 use std::io::Timer;
 use std::time::Duration;
 use std::io::stdio::print;
@@ -14,8 +13,9 @@ use std::os;
 use std::comm::{channel, Receiver, Select};
 
 pub mod game;
+pub mod random;
 pub mod behaviour {
-//    pub mod static_action;
+    pub mod static_action;
     pub mod stupid_random;
 //    pub mod minimax;
 //    pub mod minimax_memory;
@@ -33,8 +33,7 @@ fn direction_str(direction: Direction) -> &'static str {
 }
 
 fn keyboard_controlled(direction_receiver: Receiver<Direction>) -> Behaviour {
-    let (state_receiver, action_sender, behaviour) = Behaviour::make();
-    spawn(proc() {
+    Behaviour::make(proc(state_receiver, action_sender) {
         loop {
             let game = state_receiver.recv();
             if game.is_over() {
@@ -51,11 +50,11 @@ fn keyboard_controlled(direction_receiver: Receiver<Direction>) -> Behaviour {
                      .unwrap_or(MoveForward)),
                 () = timeout.recv() => MoveForward
             };
+
             debug!("Sending action {}", action);
             action_sender.send((game.turn, action));
         }
-    });
-    behaviour
+    })
 }
 
 fn getch_each(f: |i32|) {
@@ -95,12 +94,12 @@ fn main() {
     let behaviours = if keyboard_control {
         vec![
             keyboard_controlled(direction_receiver),
-            behaviour::stupid_random::stupid_random()
+            behaviour::stupid_random::stupid_random(2.0)
         ]
     } else {
         vec![
-            behaviour::stupid_random::stupid_random(),
-            behaviour::stupid_random::stupid_random()
+            behaviour::stupid_random::stupid_random(2.0),
+            behaviour::static_action::static_action(MoveForward)
         ]
     };
 

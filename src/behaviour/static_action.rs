@@ -1,21 +1,15 @@
-use game::{Action, GameState, Behaviour};
-use std::owned::Box;
+use game::{Action, Behaviour};
 
-#[deriving(Show)]
-pub struct StaticAction {
-    action: Action
-}
-
-impl StaticAction {
-    pub fn new(action: Action) -> Box<Behaviour> {
-        box StaticAction {
-            action: action
-        } as Box<Behaviour>
-    }
-}
-
-impl Behaviour for StaticAction {
-    fn act(&mut self, _: &GameState) -> Action {
-        self.action
-    }
+pub fn static_action(action: Action) -> Behaviour {
+    Behaviour::make(proc(state_receiver, action_sender) {
+        loop {
+            let game = state_receiver.recv();
+            if game.is_over() {
+                debug!("Game is over, quitting.");
+                break;
+            };
+            debug!("Sending action {}", action);
+            action_sender.send((game.turn, action));
+        }
+    })
 }
