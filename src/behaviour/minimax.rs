@@ -1,56 +1,10 @@
 use game::{Action, MoveForward, TurnLeft, TurnRight, Behaviour, GameState, Position, PlayerIndex};
-use game::{North, East, South, West};
-use behaviour::static_action::StaticAction;
 use std::f64;
-use std::vec::Vec;
-use std::rand::random;
-use std::owned::Box;
 use time::precise_time_ns;
 use std::cmp::max;
-
-#[deriving(Show)]
-pub struct Minimax;
+use util::{random_bernoulli, flood_count};
 
 static TARGET_ACT_TIME : u64 = 50000000;
-
-impl Minimax {
-    pub fn new() -> Box<Behaviour> {
-        box Minimax as Box<Behaviour>
-    }
-}
-
-fn flood_count(position: Position, game: &GameState) -> uint {
-    let mut flooded = Vec::from_elem(game.board_height, Vec::from_elem(game.board_width, false));
-    let mut count = 0u;
-    fn fill(pos: Position, game: &GameState, flooded: &mut Vec<Vec<bool>>, count: &mut uint) {
-        let (r, c) = pos;
-        if game.can_move_to(pos) && !(*flooded)[r][c] {
-            flooded.get_mut(r).grow_set(c, &false, true);
-            *count += 1;
-            fill(North.apply_to(pos), game, flooded, count);
-            fill(East.apply_to(pos), game, flooded, count);
-            fill(South.apply_to(pos), game, flooded, count);
-            fill(West.apply_to(pos), game, flooded, count);
-        }
-    };
-    fill(North.apply_to(position), game, &mut flooded, &mut count);
-    fill(East.apply_to(position), game, &mut flooded, &mut count);
-    fill(South.apply_to(position), game, &mut flooded, &mut count);
-    fill(West.apply_to(position), game, &mut flooded, &mut count);
-    count
-}
-
-fn random_bernoulli(p: f64) -> bool {
-    let x: f64 = random();
-    x < p
-}
-
-fn game_apply_action(game: &GameState, action: Action) -> GameState {
-    let mut new_game = game.clone();
-    let mut behaviours = Vec::from_fn(game.players.len(), |_| StaticAction::new(action));
-    new_game.do_turn(behaviours.as_mut_slice());
-    new_game
-}
 
 fn explore_probability(depth: uint, falloff: f64) -> f64 {
     let d = depth as f64;
@@ -70,7 +24,7 @@ fn position_distance(a: Position, b: Position) -> int {
 
 static ACTIONS: [Action, ..3] = [MoveForward, TurnLeft, TurnRight];
 
-fn minimax(player: PlayerIndex, game: &GameState, depth: uint, minimize: bool, start_time: u64) -> f64 {
+fn explore(player: PlayerIndex, game: &GameState, depth: uint, minimize: bool, start_time: u64) -> f64 {
     if game.status.is_over() {
         if game.winner() == player {
             return f64::INFINITY;
@@ -100,27 +54,41 @@ fn minimax(player: PlayerIndex, game: &GameState, depth: uint, minimize: bool, s
         |a: f64, b: f64| if a > b { a } else { b }
     };
     ACTIONS.iter().map(|action| {
-        let new_game = game_apply_action(game, *action);
-        minimax(player, &new_game, depth + 1, !minimize, start_time)
+        let new_game = game.apply_action(*action);
+        explore(player, &new_game, depth + 1, !minimize, start_time)
     }).fold(init, foldfn)
 }
 
-impl Behaviour for Minimax {
-    fn act(&mut self, game: &GameState) -> Action {
-        let player_index = game.current_player();
+fn act(game: &GameState) -> Action {
+    let player_index = game.current_player();
 
-        let (best_action, _) = ACTIONS.iter().map(|action| {
-            let new_game = game_apply_action(game, *action);
-            let score = minimax(player_index, &new_game, 0, true, precise_time_ns());
-            (*action, score)
-        }).fold((MoveForward, -f64::INFINITY), |(xa, xs), (ya, ys)|
-            if xs > ys {
-                (xa, xs)
-            } else {
-                (ya, ys)
-            }
-        );
-                
-        best_action
-    }
+    let (best_action, _) = ACTIONS.iter().map(|action| {
+        let new_game = game.apply_action(*action);
+        let score = explore(player_index, &new_game, 0, true, precise_time_ns());
+        (*action, score)
+    }).fold((MoveForward, -f64::INFINITY), |(xa, xs), (ya, ys)|
+        if xs > ys {
+            (xa, xs)
+        } else {
+            (ya, ys)
+        }
+    );
+
+    best_action
 }
+
+pub fn minimax() -> Behaviour {
+    Behaviour::make(proc(state_receiver, action_sender) {
+        loop {
+            let game = state_receiver.recv();
+            if game.is_over() {
+                debug!("Game is over, quitting.");
+                break;
+            };
+            let action = act(&game);
+            debug!("Sending action {}", action);
+            action_sender.send((game.turn, action));
+        }
+    })
+}
+

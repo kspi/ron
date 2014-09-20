@@ -1,5 +1,5 @@
 use game::{Action, MoveForward, TurnLeft, TurnRight, Behaviour, GameState};
-use random::random_bernoulli;
+use util::random_bernoulli;
 
 fn random_turn() -> Action {
     if random_bernoulli(0.5) {

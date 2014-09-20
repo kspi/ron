@@ -244,4 +244,10 @@ impl GameState {
 
         self.turn += 1;
     }
+
+    pub fn apply_action(&self, action: Action) -> GameState {
+        let mut new_game = self.clone();
+        new_game.do_turn(action);
+        new_game
+    }
 }

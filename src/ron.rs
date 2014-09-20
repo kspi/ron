@@ -3,8 +3,7 @@
 extern crate ncurses;
 extern crate time;
 
-use game::{Direction, North, East, South, West};
-use game::{Action, MoveForward};
+use game::{Direction, North, East, South, West, MoveForward};
 use game::{GameState, Player, Behaviour, PlayerTurn, PlayerHead, PlayerWall, Crash, Empty};
 use std::io::Timer;
 use std::time::Duration;
@@ -13,11 +12,11 @@ use std::os;
 use std::comm::{channel, Receiver, Select};
 
 pub mod game;
-pub mod random;
+pub mod util;
 pub mod behaviour {
     pub mod static_action;
     pub mod stupid_random;
-//    pub mod minimax;
+    pub mod minimax;
 //    pub mod minimax_memory;
 }
 
@@ -94,12 +93,12 @@ fn main() {
     let behaviours = if keyboard_control {
         vec![
             keyboard_controlled(direction_receiver),
-            behaviour::stupid_random::stupid_random(2.0)
+            behaviour::minimax::minimax()
         ]
     } else {
         vec![
-            behaviour::stupid_random::stupid_random(2.0),
-            behaviour::static_action::static_action(MoveForward)
+            behaviour::minimax::minimax(),
+            behaviour::minimax::minimax()
         ]
     };
 
@@ -154,7 +153,7 @@ fn main() {
                     break;
                 } else if id == behaviour_handle.id() {
                     let (turn, a) = behaviour.receiver.recv();
-                    if (turn == game.turn) {
+                    if turn == game.turn {
                         action = a;
                         action_set = true;
                     } else {
